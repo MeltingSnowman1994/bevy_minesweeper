@@ -1,5 +1,7 @@
 pub mod components;
 pub mod resources;
+mod bounds;
+mod systems;
 
 use bevy::log;
 use bevy::log::tracing_subscriber::fmt::format;
@@ -8,17 +10,22 @@ use bevy::window::PrimaryWindow;
 use components::Bomb;
 use components::BombNeighbor;
 use components::Coordinates;
+use resources::board::Board;
 use resources::tile::Tile;
 use resources::BoardOption;
 use resources::TileSize;
 use resources::tile_map::TileMap;
 use resources::BoardOptions;
+use bounds::Bounds2;
+use resources::board;
+use bevy::math::Vec3Swizzles;
 
 pub struct BoardPlugin;
 
 impl Plugin for BoardPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, Self::create_borad);
+        app.add_systems(Update, systems::input::input_handling);
         log::info!("Loaded Board Plugin");
     }
 }
@@ -87,6 +94,14 @@ impl BoardPlugin {
                     bomb_image,
                     font)
             });
+        commands.insert_resource(Board {
+            tile_map,
+            bounds: Bounds2 {
+                position: board_position.xy(),
+                size: board_size,
+            },
+            tile_size,
+        });
     }
 
     fn bomb_count_text_bundle(count: u8, font: Handle<Font>, size: f32) -> Text2dBundle{
