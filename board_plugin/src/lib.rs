@@ -12,6 +12,7 @@ use bevy::window::PrimaryWindow;
 use components::Bomb;
 use components::BombNeighbor;
 use components::Coordinates;
+use components::Uncover;
 use resources::board::Board;
 use resources::tile;
 use resources::tile::Tile;
@@ -76,6 +77,7 @@ impl BoardPlugin {
         let font = asset_server.load("fonts/pixeled.ttf");
         let bomb_image = asset_server.load("sprites/bomb.png");
         let mut covered_tiles = HashMap::with_capacity((tile_map.width() * tile_map.height()).into()); 
+        let mut safe_start = None;
         commands
             .spawn_empty()
             .insert(Name::new("Board"))
@@ -103,8 +105,14 @@ impl BoardPlugin {
                     font,
 Color::srgba(0.6, 0.6, 0.6, 1.0),
                     &mut covered_tiles,
+                    &mut safe_start,
             )
             });
+            if options.safe_start {
+                if let Some(entity) = safe_start {
+                    commands.entity(entity).insert(Uncover);
+                }
+            }
         commands.insert_resource(Board {
             tile_map,
             bounds: Bounds2 {
@@ -156,6 +164,7 @@ Color::srgba(0.6, 0.6, 0.6, 1.0),
         font: Handle<Font>,
         covered_tile_color: Color,
         covered_tiles: &mut HashMap<Coordinates, Entity>,
+        safe_start_entity: &mut Option<Entity>,
     ) {
         for (y, line) in tile_map.iter().enumerate(){
             for(x, tile) in line.iter().enumerate(){
@@ -193,6 +202,9 @@ Color::srgba(0.6, 0.6, 0.6, 1.0),
                         .insert(Name::new("Tile Cover"))
                         .id();
                     covered_tiles.insert(coordinates, entity);
+                    if safe_start_entity.is_none() && *tile == Tile::Empty {
+                        *safe_start_entity = Some(entity);
+                    }
                 });
                 match tile {
                     Tile::Bomb => {
