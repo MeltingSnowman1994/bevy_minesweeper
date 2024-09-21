@@ -5,40 +5,46 @@ mod systems;
 mod events;
 
 use bevy::log;
-use bevy::log::tracing_subscriber::fmt::format;
 use bevy::prelude::*;
 use bevy::utils::hashbrown::HashMap;
 use bevy::window::PrimaryWindow;
+
 use components::Bomb;
 use components::BombNeighbor;
 use components::Coordinates;
 use components::Uncover;
 use resources::board::Board;
-use resources::tile;
 use resources::tile::Tile;
 use resources::BoardOption;
 use resources::TileSize;
 use resources::tile_map::TileMap;
 use resources::BoardOptions;
 use bounds::Bounds2;
-use resources::board;
 use bevy::math::Vec3Swizzles;
 use crate::events::*;
 
-pub struct BoardPlugin;
+pub struct BoardPlugin<T> {
+    pub running_state: T,
+}
 
-impl Plugin for BoardPlugin {
+impl<T: States> Plugin for BoardPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, Self::create_borad);
-        app.add_systems(Update, systems::input::input_handling);
-        app.add_systems(Update, systems::uncover::trigger_event_handler);
-        app.add_systems(Update, systems::uncover::uncover_tiles);
+        app.add_systems(OnEnter(self.running_state.clone()), Self::create_borad);
+        // app.add_systems(Startup, Self::create_borad);
+        app.add_systems(Update,( 
+            systems::input::input_handling,
+            systems::uncover::trigger_event_handler,
+            systems::uncover::uncover_tiles,
+        ).run_if(in_state(self.running_state.clone()))); 
+        // app.add_systems(Update , systems::uncover::trigger_event_handler);
+        // app.add_systems(Update (self.running_state), systems::uncover::uncover_tiles);
+        app.add_systems(OnExit(self.running_state.clone()), Self::cleanup_board);
         app.add_event::<TileTriggerEvent>();
         log::info!("Loaded Board Plugin");
     }
 }
 
-impl BoardPlugin {
+impl<T> BoardPlugin<T> {
     pub fn create_borad(
         mut commands: Commands,
         board_options: Option<Res<BoardOptions>>,
@@ -78,7 +84,7 @@ impl BoardPlugin {
         let bomb_image = asset_server.load("sprites/bomb.png");
         let mut covered_tiles = HashMap::with_capacity((tile_map.width() * tile_map.height()).into()); 
         let mut safe_start = None;
-        commands
+        let board_entity = commands
             .spawn_empty()
             .insert(Name::new("Board"))
             .insert(Transform::from_translation(board_position))
@@ -107,7 +113,8 @@ Color::srgba(0.6, 0.6, 0.6, 1.0),
                     &mut covered_tiles,
                     &mut safe_start,
             )
-            });
+            })
+            .id();
             if options.safe_start {
                 if let Some(entity) = safe_start {
                     commands.entity(entity).insert(Uncover);
@@ -121,6 +128,7 @@ Color::srgba(0.6, 0.6, 0.6, 1.0),
             },
             tile_size,
             covered_tiles,
+            entity: board_entity,
         });
     }
 
@@ -246,5 +254,10 @@ Color::srgba(0.6, 0.6, 0.6, 1.0),
         let max_width = window.width() / width as f32;
         let max_height = window.height() / height as f32;
         max_width.min(max_height).clamp(min, max)
+    }
+
+    fn cleanup_board(board: Res<Board>, mut commands: Commands) {
+        commands.entity(board.entity).despawn_recursive();
+        commands.remove_resource::<Board>();
     }
 }

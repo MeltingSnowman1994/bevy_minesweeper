@@ -1,6 +1,6 @@
 use crate::bounds::Bounds2;
 use crate::{Coordinates, TileMap};
-use bevy::{log, prelude::*};
+use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Debug, Resource)]
@@ -9,6 +9,7 @@ pub struct Board {
     pub bounds: Bounds2,
     pub tile_size:  f32,
     pub covered_tiles: HashMap<Coordinates, Entity>,
+    pub entity: Entity,
 }
 
 impl Board {
