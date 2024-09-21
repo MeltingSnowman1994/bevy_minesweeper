@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use board_plugin::resources::BoardOptions;
+use bevy::log;
 
 #[cfg(feature = "debug")]
 // bevy_inspector_egui old version
@@ -7,6 +8,13 @@ use board_plugin::resources::BoardOptions;
 // bevy_inspector_egui new version
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use board_plugin::BoardPlugin;
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, States)]
+pub enum AppState {
+    #[default]
+    InGame,
+    Out,
+}
 
 fn main() {
     let mut app = App::new();
@@ -45,10 +53,14 @@ fn main() {
         safe_start: true,
         ..Default::default()
     });
-    app.add_plugins(BoardPlugin);
+    app.init_state::<AppState>();
+    app.add_plugins(BoardPlugin {
+        running_state:AppState::InGame,
+    });
 
     // app.add_plugins(DefaultPlugins);
     app.add_systems(Startup, camera_setup);
+    app.add_systems(Update, state_handler);
     // Run the app
     app.run();
 }
@@ -58,4 +70,21 @@ fn camera_setup(mut commands: Commands) {
     // commands.spawn_bandle(OrthographicCameraBandle::new_2d());
     // bevy version
     commands.spawn(Camera2dBundle::default());
+}
+
+fn state_handler(cur_state:ResMut<State<AppState>>,mut next_state:ResMut<NextState<AppState>>, keys: Res<ButtonInput<KeyCode>>) {
+    if keys.just_pressed(KeyCode::KeyC) {
+        log::debug!("cleaning detected");
+        if cur_state.get() == &AppState::InGame {
+            log::info!("clearing game");
+            next_state.set(AppState::Out);
+        }
+    }
+    if keys.just_pressed(KeyCode::KeyG) {
+        log::debug!("loading detected");
+        if cur_state.get() == &AppState::Out {
+            log::info!("loading game");
+            next_state.set(AppState::InGame);
+       }
+    }
 }

@@ -3,7 +3,6 @@ use crate::Board;
 use bevy::input::{mouse::MouseButtonInput, ButtonState};
 use bevy::log;
 use bevy::prelude::*;
-use bevy::render::view::window;
 use bevy::window::PrimaryWindow;
 
 pub fn input_handling (
