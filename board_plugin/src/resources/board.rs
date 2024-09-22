@@ -1,6 +1,6 @@
 use crate::bounds::Bounds2;
 use crate::{Coordinates, TileMap};
-use bevy::prelude::*;
+use bevy::{log, prelude::*};
 use bevy::utils::HashMap;
 
 #[derive(Debug, Resource)]
@@ -10,6 +10,7 @@ pub struct Board {
     pub tile_size:  f32,
     pub covered_tiles: HashMap<Coordinates, Entity>,
     pub entity: Entity,
+    pub marked_tiles: Vec<Coordinates>,
 }
 
 impl Board {
@@ -33,11 +34,18 @@ impl Board {
 
     /// Retrieves a covered tile entity
     pub fn tile_to_uncover(&self, coords: &Coordinates) -> Option<&Entity> {
-        self.covered_tiles.get(coords)
+        if self.marked_tiles.contains(coords) {
+            None
+        } else {
+            self.covered_tiles.get(coords)
+        }
     }
 
     /// We try to uncover a tile, returning the entity
     pub fn try_uncover_tile(&mut self, coords: &Coordinates) -> Option<Entity> {
+        if self.marked_tiles.contains(coords) {
+            self.unmark_tile(coords)?;
+        }
         self.covered_tiles.remove(coords)
     }
 
@@ -48,5 +56,32 @@ impl Board {
             .filter_map(|c| self.covered_tiles.get(&c))
             .copied()
             .collect()
+    }
+
+    fn unmark_tile(&mut self, coords: &Coordinates) -> Option<Coordinates> {
+        let pos = match self.marked_tiles.iter().position(|a| a == coords) {
+            None => {
+                log::error!("Failed to unmark tile at {}", coords);
+                return None;
+            }
+            Some(p) => p,
+        };
+        Some(self.marked_tiles.remove(pos))
+    }
+
+    pub fn is_completed(&self) -> bool {
+        self.tile_map.bomb_count() as usize == self.covered_tiles.len()
+    }
+
+    pub fn try_toggle_mark(&mut self, coords: &Coordinates) -> Option<(Entity, bool)> {
+        let entity = *self.covered_tiles.get(coords)?;
+        let mark = if self.marked_tiles.contains(coords) {
+            self.unmark_tile(coords)?;
+            false
+        } else {
+            self.marked_tiles.push(*coords);
+            true
+        };
+        Some((entity, mark))
     }
 }
