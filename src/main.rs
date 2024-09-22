@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use board_plugin::resources::BoardOptions;
+use board_plugin::resources::{BoardAssets, BoardOptions, SpriteMaterial};
 use bevy::log;
 
 #[cfg(feature = "debug")]
@@ -46,16 +46,10 @@ fn main() {
     // bevy version 0.10
     // app.add_startup_system(camera_setup)
     // bevy version 0.11
-    app.insert_resource(BoardOptions{
-        map_size:(20,20),
-        bomb_count: 40,
-        tile_padding: 3.,
-        safe_start: true,
-        ..Default::default()
-    });
+    app.add_systems(Startup,setup_board);
     app.init_state::<AppState>();
     app.add_plugins(BoardPlugin {
-        running_state:AppState::InGame,
+        running_state:AppState::Out,
     });
 
     // app.add_plugins(DefaultPlugins);
@@ -87,4 +81,48 @@ fn state_handler(cur_state:ResMut<State<AppState>>,mut next_state:ResMut<NextSta
             next_state.set(AppState::InGame);
        }
     }
+}
+
+fn setup_board(
+    mut commands: Commands,
+    mut state: ResMut<NextState<AppState>>,
+    asset_server: Res<AssetServer>,
+) {
+    commands.insert_resource(
+        BoardOptions{
+            map_size:(20,20),
+            bomb_count: 40,
+            tile_padding: 1.,
+            safe_start: true,
+            ..Default::default()
+        }
+    );
+    commands.insert_resource(
+        BoardAssets {
+            label: "Default".to_string(),
+            board_material: SpriteMaterial {
+                color: Color::WHITE,
+                ..Default::default()
+            },
+            tile_material: SpriteMaterial {
+                color: Color::srgba(0.7, 0.7,0.7, 1.),
+                ..Default::default()
+            },
+            covered_tile_material: SpriteMaterial {
+                color: Color::srgba(0.5, 0.5, 0.5, 1.),
+                ..Default::default()
+            },
+            bomb_counter_font: asset_server.load("fonts/pixeled.ttf"),
+            bomb_counter_colors: BoardAssets::default_color(),
+            flag_material: SpriteMaterial {
+                texture: asset_server.load("sprites/flag.png"),
+                color: Color::WHITE
+            },
+            bomb_material: SpriteMaterial {
+                texture: asset_server.load("sprites/bomb.png"),
+                color: Color::WHITE
+            },
+        }
+    );
+    state.set(AppState::InGame);
 }
