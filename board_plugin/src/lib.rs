@@ -36,11 +36,15 @@ impl<T: States> Plugin for BoardPlugin<T> {
             systems::input::input_handling,
             systems::uncover::trigger_event_handler,
             systems::uncover::uncover_tiles,
+            systems::mark::mark_tiles,
         ).run_if(in_state(self.running_state.clone()))); 
         // app.add_systems(Update , systems::uncover::trigger_event_handler);
         // app.add_systems(Update (self.running_state), systems::uncover::uncover_tiles);
         app.add_systems(OnExit(self.running_state.clone()), Self::cleanup_board);
         app.add_event::<TileTriggerEvent>();
+        app.add_event::<TileMarkEvent>();
+        app.add_event::<BombExplosionEvent>();
+        app.add_event::<BoardCompletedEvent>();
         log::info!("Loaded Board Plugin");
     }
 }
@@ -126,6 +130,7 @@ impl<T> BoardPlugin<T> {
             tile_size,
             covered_tiles,
             entity: board_entity,
+            marked_tiles: Vec::new(),
         });
     }
 
